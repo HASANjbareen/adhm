@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Cards</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', sans-serif;
+    color: #eee;
+  }
+
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    color: #e94560;
+    letter-spacing: 2px;
+  }
+
+  #stats {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+    color: #a8dadc;
+  }
+
+  #stats span { font-weight: bold; color: #e94560; }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(4, 100px);
+    gap: 12px;
+  }
+
+  .card {
+    width: 100px;
+    height: 100px;
+    perspective: 600px;
+    cursor: pointer;
+  }
+
+  .card-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.4s ease;
+  }
+
+  .card.flipped .card-inner { transform: rotateY(180deg); }
+  .card.matched .card-inner { transform: rotateY(180deg); }
+
+  .card-front, .card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    backface-visibility: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+  }
+
+  .card-front {
+    background: linear-gradient(135deg, #16213e, #0f3460);
+    border: 2px solid #e94560;
+    font-size: 2rem;
+    color: #e94560;
+    user-select: none;
+  }
+
+  .card-back {
+    background: linear-gradient(135deg, #0f3460, #533483);
+    border: 2px solid #a8dadc;
+    transform: rotateY(180deg);
+  }
+
+  .card.matched .card-back {
+    background: linear-gradient(135deg, #1a7a4a, #2ecc71);
+    border-color: #2ecc71;
+  }
+
+  #message {
+    margin-top: 20px;
+    font-size: 1.4rem;
+    color: #2ecc71;
+    min-height: 2rem;
+    letter-spacing: 1px;
+  }
+
+  #restart {
+    margin-top: 15px;
+    padding: 10px 30px;
+    background: #e94560;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: transform 0.2s, opacity 0.2s;
+  }
+
+  #restart:hover { opacity: 0.85; transform: scale(1.05); }
+</style>
+</head>
+<body>
+<h1>Memory Cards</h1>
+<div id="stats">
+  <div>Moves: <span id="moves">0</span></div>
+  <div>Matches: <span id="matches">0</span>/8</div>
+  <div>Time: <span id="timer">0s</span></div>
+</div>
+<div id="board"></div>
+<div id="message"></div>
+<button id="restart">New Game</button>
+
+<script>
+const EMOJIS = ['🐶','🐱','🦊','🐸','🦋','🎮','🍕','🌟'];
+let cards = [], flipped = [], moves = 0, matches = 0, lock = false;
+let timerInterval, seconds = 0, started = false;
+
+function shuffle(arr) {
+  return [...arr, ...arr].sort(() => Math.random() - 0.5);
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  seconds = 0;
+  timerInterval = setInterval(() => {
+    seconds++;
+    document.getElementById('timer').textContent = seconds + 's';
+  }, 1000);
+}
+
+function init() {
+  clearInterval(timerInterval);
+  moves = 0; matches = 0; flipped = []; lock = false; started = false;
+  document.getElementById('moves').textContent = 0;
+  document.getElementById('matches').textContent = 0;
+  document.getElementById('timer').textContent = '0s';
+  document.getElementById('message').textContent = '';
+
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  cards = shuffle(EMOJIS);
+
+  cards.forEach((emoji, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-inner">
+        <div class="card-front">?</div>
+        <div class="card-back">${emoji}</div>
+      </div>`;
+    card.dataset.emoji = emoji;
+    card.addEventListener('click', () => flipCard(card));
+    board.appendChild(card);
+  });
+}
+
+function flipCard(card) {
+  if (lock || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+  if (!started) { startTimer(); started = true; }
+
+  card.classList.add('flipped');
+  flipped.push(card);
+
+  if (flipped.length === 2) {
+    lock = true;
+    moves++;
+    document.getElementById('moves').textContent = moves;
+    checkMatch();
+  }
+}
+
+function checkMatch() {
+  const [a, b] = flipped;
+  if (a.dataset.emoji === b.dataset.emoji) {
+    a.classList.add('matched');
+    b.classList.add('matched');
+    matches++;
+    document.getElementById('matches').textContent = matches;
+    flipped = [];
+    lock = false;
+    if (matches === 8) {
+      clearInterval(timerInterval);
+      document.getElementById('message').textContent =
+        `You won in ${moves} moves & ${seconds}s!`;
+    }
+  } else {
+    setTimeout(() => {
+      a.classList.remove('flipped');
+      b.classList.remove('flipped');
+      flipped = [];
+      lock = false;
+    }, 900);
+  }
+}
+
+document.getElementById('restart').addEventListener('click', init);
+init();
+</script>
+</body>
+</html>
